@@ -1,6 +1,6 @@
 ﻿////////////////////////////////////////////////////////////////////////////////////////////////
 //
-//  Save Layers To Files v1.4
+//  Save Layers To Files
 //  03/28/2013
 //  Rory Starks
 //
@@ -12,14 +12,15 @@ else
 	app.preferences.rulerUnits = Units.PIXELS;
 	
 	//The follwing variables below can be adjusted manually.
-	HalfSize = true; 		//Assuming the source PSD is at HD resolution (double), this flag will generate images at half the size.
-	Trim = true;			//Trim the layer after pasting it into a new document that is the same resolution as the source PSD.
-	CreateCSV = true;		//Generate a CSV file, which is useful if you are using the AssembleUI.jsfl script in Flash.
-	CreateTextCSV = true;	//Generate a CSV file that includes text fields and style information.
-	CreateXML = false;		//Generate an XML file with x, y, height, and width information.
-	PowerOfTwo = false;		//Each exported image will be in a power-of-two format (legacy support).
+	HalfSize = true; 			//Assuming the source PSD is at HD resolution (double), this flag will generate images at half the size.
+	Trim = true;				//Trim the layer after pasting it into a new document that is the same resolution as the source PSD.
+	CreateCSV = true;			//Generate a CSV file, which is useful if you are using the AssembleUI.jsfl script in Flash.
+	CreateTextCSV = true;		//Generate a CSV file that includes text fields and style information.
+	CreateXML = false;			//Generate an XML file with x, y, height, and width information.
+	CreateTextStyles = true;	//Creates a text file with descriptive font style information.
+	PowerOfTwo = false;			//Each exported image will be in a power-of-two format (legacy support).
 	OnSave();
-	//DisplayDialog();		//This will be updated later.
+	//DisplayDialog();			//This will be updated later.
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Creates the dialog box that is displayed when starting the script
@@ -63,6 +64,64 @@ function DisplayDialog() {
 	dlg.show();
 
 	return true;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//Generates a text file with descriptive style information based on text layers within the Photoshop document
+function GenerateTextStylesTXT(file, filename) {
+	var layers = app.activeDocument.layers;
+	var len =  layers.length;
+
+	var fout = File( file );
+	fout.open( "w" );
+	
+	var TextStyles = "Text Style information for " + filename + "\n";
+	TextStyles += "==========================================================================\n\n";
+    
+	for (var i = 0; i < len; i++) {
+		if (layers[i].visible && layers[i].kind == LayerKind.TEXT) {
+			var suffix = layers[i].name.slice(4);
+			var prefix = layers[i].name.slice(0, 3);
+	
+			//name;contents;leftPos;topPos;rightPos;bottomPos;caps;font;color;size;
+			var name = layers[i].name;
+	  		var contents = layers[i].textItem.contents;
+	
+			var leftPos = layers[i].bounds[0]; 
+			var topPos = layers[i].bounds[1];
+			var rightPos = layers[i].bounds[2];
+			var bottomPos = layers[i].bounds[3];
+			var caps = layers[i].textItem.capitalization=="TextCase.NORMAL"?"normal":"uppercase";
+			var font = layers[i].textItem.font;
+			var color = layers[i].textItem.color.rgb.hexValue?layers[i].textItem.color.rgb.hexValue:'';
+			var size = layers[i].textItem.size;
+			var align = layers[i].textItem.justification.toString();
+			//align = align.replace("Justification.","").toLowerCase();
+			
+			if (HalfSize == true) {
+				leftPos = Math.floor(leftPos * 0.5);
+				topPos = Math.floor(topPos * 0.5);
+				rightPos = Math.floor(rightPos * 0.5);
+				bottomPos = Math.floor(bottomPos * 0.5);
+				size = Math.floor(size * 0.5);
+			}
+
+			TextStyles += "--------------------------------------------------------------------------\n";
+			TextStyles += "Layer Name:                " + name + "\n";
+			TextStyles += "Content:                   " + contents.replace(/\r/gm,' ') + "\n";
+			TextStyles += "Location (left,top):       " + leftPos + "," + topPos + "\n";
+			TextStyles += "Location (right,bottom):   " + rightPos + "," + bottomPos + "\n";
+			TextStyles += "Capitalization Style:      " + caps + "\n";
+			TextStyles += "Font Name:                 " + font + "\n";
+			TextStyles += "Color (hex value):         #" + color + "\n";
+			TextStyles += "Font Size:                 " + size + "\n";
+			TextStyles += "Alignment:                 " + align.replace("Justification.","").toLowerCase() + "\n";
+			TextStyles += "\n\n";
+		}
+	}
+	TextStyles += "==========================================================================\n";
+	fout.writeln(TextStyles);
+	fout.close();
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -256,6 +315,7 @@ function OnSave() {
 	filePath = app.activeDocument.path + "/" + fileName + ".xml";
 	filePathCSV = app.activeDocument.path + "/" + fileName + ".csv";
 	filePathTextCSV = app.activeDocument.path + "/" + fileName + "_text.csv";
+	filePathTextStyles = app.activeDocument.path + "/" + fileName + "_text_styles.txt";
 	//filePath += dlg.OutPutFileName.text;
 	
 	app.activeDocument.selection.deselect();
@@ -266,6 +326,7 @@ function OnSave() {
 	if (CreateXML) GenerateXMLFile(filePath);
 	if (CreateCSV) GenerateCoordinatesCSV(filePathCSV);
 	if (CreateTextCSV) GenerateTextCSV(filePathTextCSV);
+	if (CreateTextStyles) GenerateTextStylesTXT(filePathTextStyles, fileNameEXT);
 	//dlg.close();
 	
 	layers = app.activeDocument.layers;
