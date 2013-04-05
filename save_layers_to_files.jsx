@@ -19,6 +19,7 @@ else
 	CreateXML = false;			//Generate an XML file with x, y, height, and width information.
 	CreateTextStyles = true;	//Creates a text file with descriptive font style information.
 	PowerOfTwo = false;			//Each exported image will be in a power-of-two format (legacy support).
+	RemoveCopy = true;
 	OnSave();
 	//DisplayDialog();			//This will be updated later.
 
@@ -302,10 +303,32 @@ function BrowseOutPutDirectory() {
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//Removes "copy ###" from the end of a layer name
+function RenameLayers(layers) {
+	var len =  layers.length;
+	var parent = layers.parent;
+	//Recursively goes through the document looking for "copy ###" and removes it on all visible layers
+	for (var i = 0;i < len; i++){
+		var layer = layers[i];
+		if(layer.typename != 'LayerSet' && layer.visible) {
+			var oldName = layer.name;
+			var newName = oldName.replace(/\scopy.*$/i,'');
+			layer.name = newName;
+		} else if (layer.typename == 'LayerSet' && layer.visible) {
+			RenameLayers(layer.layers);
+		} else {
+			continue;
+		}
+	}
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Closes the dialog
 function OnCancel() {
 	dlg.close()
 }
+
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Main function that generates XML and starts the layer export process
@@ -319,6 +342,8 @@ function OnSave() {
 	//filePath += dlg.OutPutFileName.text;
 	
 	app.activeDocument.selection.deselect();
+	
+	if (RemoveCopy) RenameLayers(app.activeDocument.layers);
 	
 	app.activeDocument.save();
 	MergeLayers(app.activeDocument.layers);
