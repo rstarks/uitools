@@ -16,7 +16,7 @@ else
 	Trim = true;				//Trim the layer after pasting it into a new document that is the same resolution as the source PSD.
 	CreateCSV = true;			//Generate a CSV file, which is useful if you are using the AssembleUI.jsfl script in Flash.
 	CreateTextCSV = true;		//Generate a CSV file that includes text fields and style information.
-	CreateXML = false;			//Generate an XML file with x, y, height, and width information.
+	CreateXML = true;			//Generate an XML file with x, y, height, and width information.
 	CreateTextStyles = true;	//Creates a text file with descriptive font style information.
 	PowerOfTwo = false;			//Each exported image will be in a power-of-two format (legacy support).
 	RemoveCopy = true;
@@ -229,57 +229,36 @@ function GenerateCoordinatesCSV(file) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Generates an XML based on visible layers within the Photoshop document
 function GenerateXMLFile(file) {
-	//var activeDoc = app.activeDocument;
+
 	var layers = app.activeDocument.layers;
 	var len =  layers.length;
-
+	
+	var modifier = 1;
+	if (HalfSize == true) { modifier = 0.5; }
+	
 	var fout = File( file );
 	fout.open( "w" );
 
-	var XMLText  = "<ObjectsList>\n";
-    //var backgroundText = "This Script Trim each Layers and export as separate PNG images with X Y Coordnates (Center)";
+	var XMLText  = '<layout sourcefile="' + app.activeDocument.name + '">\n';
 
 	for (var i = 0; i < len; i++) {
-	/*for(i = len-1; i >= 0; i--) {*/
-
-		if (layers[i].visible) {
+		if (layers[i].visible && layers[i].kind != LayerKind.TEXT) {			
 			var suffix = layers[i].name.slice(4);
 			var prefix = layers[i].name.slice(0, 3);
 		
-			/*
-			//Center Position
-			var xPos = (layers[i].bounds[0] + layers[i].bounds[2])/2; 
-			var yPos = (layers[i].bounds[1] + layers[i].bounds[3])/2; 
-			var width = layers[i].bounds[2] - layers[i].bounds[0];
-			var height = layers[i].bounds[3] - layers[i].bounds[1];
-			*/	
-		
-			//Left Top Position
-			var xPos = (layers[i].bounds[0]); 
-			var yPos = (layers[i].bounds[1]);
-			var width = layers[i].bounds[2] - layers[i].bounds[0];
-			var height = layers[i].bounds[3] - layers[i].bounds[1];
+			//Coordinates
+			var width = Math.floor((layers[i].bounds[2] - layers[i].bounds[0]) * modifier);
+			var height = Math.floor((layers[i].bounds[3] - layers[i].bounds[1]) * modifier);
+			var xPos = Math.floor(layers[i].bounds[0] * modifier); 
+			var yPos = Math.floor(layers[i].bounds[1] * modifier);
+			var yPosLB = Math.floor(((layers[i].bounds[1] * -1) + app.activeDocument.height.value) * modifier);
 
-
-	  		 // Background Layers
-			if (prefix != "XXN") {
-   				//XMLText += "filename";
-				var filePath = layers[i].name;
-				XMLText += filePath+",";
-				//XMLText += "x=";
-				XMLText += Format(xPos)+",";
-				//XMLText += "y=";
-				XMLText += Format(yPos)+",";
-				//XMLText += "w=";
-				XMLText += Format(width)+",";
-				//XMLText += "h=";
-				XMLText += Format(height);
-				XMLText += "\n";
-			}
+	  		//PNG info
+			XMLText += '   <png filename="' + layers[i].name + '.png" x="' + xPos + '" y="' + yPosLB + '" width="' + width + '" height="' + height + '" />\n';
 		}
 	}
 
-	XMLText  += "<\ObjectsList>";
+	XMLText  += "<\layout>";
 
 	//fout.writeln(backgroundText);
 	fout.writeln(XMLText);

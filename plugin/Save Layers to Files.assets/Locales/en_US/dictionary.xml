@@ -3,14 +3,23 @@
   <str name="Configurator/ActionScript/Script/desc###2" translate="yes">
     <val>Run JavaScript</val>
   </str>
+  <str name="Configurator/ActionScript/Script/desc###9" translate="yes">
+    <val>Run JavaScript</val>
+  </str>
   <str name="Configurator/ActionScript/Script/name###1" translate="yes">
     <val>Save Layers to Files</val>
+  </str>
+  <str name="Configurator/ActionScript/Script/name###8" translate="yes">
+    <val>Rename Layers</val>
   </str>
   <str name="Configurator/ActionScript/ScriptFile/desc###5" translate="yes">
     <val>Run JavaScript File</val>
   </str>
   <str name="Configurator/ActionScript/ScriptFile/name###4" translate="yes">
     <val>Script File</val>
+  </str>
+  <str name="Configurator/Attribute/visible/value###10" translate="yes">
+    <val>True</val>
   </str>
   <str name="Configurator/Attribute/visible/value###3" translate="yes">
     <val>True</val>
