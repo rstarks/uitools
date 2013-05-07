@@ -289,12 +289,10 @@ function RenameLayers(layers) {
 	//Recursively goes through the document looking for "copy ###" and removes it on all visible layers
 	for (var i = 0;i < len; i++){
 		var layer = layers[i];
-		if(layer.typename != 'LayerSet' && layer.visible) {
+		if(layer.visible) {
 			var oldName = layer.name;
 			var newName = oldName.replace(/\scopy.*$/i,'');
 			layer.name = newName;
-		} else if (layer.typename == 'LayerSet' && layer.visible) {
-			RenameLayers(layer.layers);
 		} else {
 			continue;
 		}
