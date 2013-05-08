@@ -15,7 +15,7 @@ _Note: be careful if you have layers that run off the canvas because the script 
 
 Step 2
 ----------------------------------------------------------------------------------------
-You can look through the images that Photoshop generated in step 1 and check to see if they were made correctly.  You might also want to check the .csv files to make sure they look right.  **<filename>_text_styles.txt** contains plain-text style information that might be useful for the engineers or for your own personal reference.
+You can look through the images that Photoshop generated in step 1 and check to see if they were made correctly.  You might also want to check the .csv files to make sure they look right.  **\<filename\>_text_styles.txt** contains plain-text style information that might be useful for the engineers or for your own personal reference.
 
 
 
@@ -27,4 +27,4 @@ Create a new .fla file in Flash with the same name as your .psd file from step 1
 
 Step 4
 ----------------------------------------------------------------------------------------
-Within Flash, set your stage size to 800x480 or 480x800 (or to whatever resolution the game is using).  Next, run **assemble_ui.jsfl** by going to **Commands->Run Command...** and selecting that script.  The images will be imported from the **/<filename>_png/** folder and placed on the stage according to the variables from the .csv file.  The text .csv file will be used to create dynamic text fields with the same attributes as the text layers in the Photoshop document.  It isn't perfect but it's a close approximation.  Layer effects applied to text layers are ignored.
+Within Flash, set your stage size to 800x480 or 480x800 (or to whatever resolution the game is using).  Next, run **assemble_ui.jsfl** by going to **Commands->Run Command...** and selecting that script.  The images will be imported from the **/\<filename\>_png/** folder and placed on the stage according to the variables from the .csv file.  The text .csv file will be used to create dynamic text fields with the same attributes as the text layers in the Photoshop document.  It isn't perfect but it's a close approximation.  Layer effects applied to text layers are ignored.
