@@ -251,7 +251,8 @@ function GenerateXMLFile(file) {
 			var height = Math.floor((layers[i].bounds[3] - layers[i].bounds[1]) * modifier);
 			var xPos = Math.floor(layers[i].bounds[0] * modifier); 
 			var yPos = Math.floor(layers[i].bounds[1] * modifier);
-			var yPosLB = Math.floor(((layers[i].bounds[1] * -1) + app.activeDocument.height.value) * modifier);
+			//var yPosLB = Math.floor(((layers[i].bounds[1] * -1) + app.activeDocument.height.value) * modifier);
+			var yPosLB = Math.floor(((layers[i].bounds[3] * -1) + app.activeDocument.height.value) * modifier);
 
 	  		//PNG info
 			XMLText += '   <png filename="' + layers[i].name + '.png" x="' + xPos + '" y="' + yPosLB + '" width="' + width + '" height="' + height + '" />\n';

@@ -7,7 +7,7 @@ Here's a quick tutorial on how to use save_layers_to_files.jsx and assemble_ui.j
 
 Step 1
 ----------------------------------------------------------------------------------------
-Label the layers you want to export and hide the layers you don't need (text, duplicates, etc.). Run save_layers_to_files.jsx by going to File->Scripts->Browse... in Photoshop. It will take 1-2 minutes to run through everything.  Groups will be merged into single layers unless the option is changed in the script.
+Label the layers you want to export and hide the layers you don't need. Run _save_layers_to_files.jsx_ by going to File->Scripts->Browse... in Photoshop. It will take a few minutes to run through everything.  Groups will be merged into single layers unless the option is changed in the script.
 
 Note: be careful if you have layers that run off the canvas because the script duplicates entire layers before exporting, which could result in problems.  You can typically fix this by cropping the canvas at maximum size beforehand.  This issue will be fixed in a later update.
 
