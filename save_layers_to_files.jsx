@@ -20,8 +20,9 @@ else
 	CreateTextStyles = true;	//Creates a text file with descriptive font style information.
 	PowerOfTwo = false;			//Each exported image will be in a power-of-two format (legacy support).
 	RemoveCopy = true;
-	OnSave();
-	//DisplayDialog();			//This will be updated later.
+	MergeGroups = true;
+	//OnSave();
+	DisplayDialog();			//This will be updated later.
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Creates the dialog box that is displayed when starting the script
@@ -37,18 +38,30 @@ function DisplayDialog() {
 	dlg.orientation = 'column';
 	dlg.alignChildren = 'left';
 
-	//dlg content
-	dlg.Trim = dlg.add('checkbox', undefined, 'Trim Layers');
+	//dlg content	
+	dlg.GenerateHalfRes = dlg.add('checkbox', undefined, 'Generate half size');
+	dlg.GenerateHalfRes.value = true;
+	
+	dlg.Trim = dlg.add('checkbox', undefined, 'Trim layers');
 	dlg.Trim.value = true;
 	
-	dlg.MergeGroups = dlg.add('checkbox', undefined, 'Merge Groups');
-	dlg.MergeGroups.value = false;
+	//dlg.MergeGroups = dlg.add('checkbox', undefined, 'Merge top-level groups');
+	//dlg.MergeGroups.value = true;
 	
-	dlg.GenerateHalfRes = dlg.add('checkbox', undefined, 'Generate Half Size');
-	dlg.GenerateHalfRes.value = false;
+	dlg.GenerateXML = dlg.add('checkbox', undefined, 'Generate XML file');
+	dlg.GenerateXML.value = true;
+
+	dlg.FlashInfo = dlg.add('checkbox', undefined, 'Generate Flash import CSV files');
+	dlg.FlashInfo.value = true;
 	
-	dlg.GenerateXML = dlg.add('checkbox', undefined, 'Generate XML File');
-	dlg.GenerateXML.value = false;
+	dlg.GenerateTextStyles = dlg.add('checkbox', undefined, 'Generate text style info');
+	dlg.GenerateTextStyles.value = true;
+	
+	dlg.PowerOfTwo = dlg.add('checkbox', undefined, 'Power of two');
+	dlg.PowerOfTwo.value = false;
+	
+	dlg.RemoveCopy = dlg.add('checkbox', undefined, 'Remove \"copy ###\" from layer names');
+	dlg.RemoveCopy.value = true;
 
 	/*dlg.add( "statictext", [30, 35, 100, 60], 'Output Dir :' );
 	dlg.OutPutDir = dlg.add( 'edittext', [100, 40, 320, 60], "" );
@@ -56,7 +69,7 @@ function DisplayDialog() {
 	dlg.BrowseOutPutDir.onClick = BrowseOutPutDirectory;*/
 
 	dlg.Cancel = dlg.add( 'button', undefined, 'Cancel' )
-	dlg.Cancel.onClick = OnCancel;
+	dlg.Cancel.onClick = OnCancel();
 	dlg.Ok = dlg.add( 'button', undefined, 'OK' )
 	dlg.Ok.onClick = OnSave;
 
@@ -290,7 +303,7 @@ function RenameLayers(layers) {
 	//Recursively goes through the document looking for "copy ###" and removes it on all visible layers
 	for (var i = 0;i < len; i++){
 		var layer = layers[i];
-		if(layer.visible) {
+		if(layer.typename == 'ArtLayer' && layer.visible) {
 			var oldName = layer.name;
 			var newName = oldName.replace(/\scopy.*$/i,'');
 			layer.name = newName;
@@ -311,6 +324,17 @@ function OnCancel() {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Main function that generates XML and starts the layer export process
 function OnSave() {
+	dlg.close();
+	HalfSize = dlg.GenerateHalfRes.value;
+	Trim = dlg.Trim.value;
+	CreateXML = dlg.GenerateXML.value;
+	CreateTextStyles = dlg.GenerateTextStyles.value;
+	PowerOfTwo = dlg.PowerOfTwo.value;
+	CreateCSV = dlg.FlashInfo.value;
+	CreateTextCSV = dlg.FlashInfo.value;
+	RemoveCopy = dlg.RemoveCopy.value;
+	//MergeGroups = dlg.MergeGroups.value;
+
 	fileNameEXT = app.activeDocument.name;
 	fileName = fileNameEXT.substr(0, fileNameEXT.length - 4);
 	filePath = app.activeDocument.path + "/" + fileName + ".xml";
@@ -320,11 +344,12 @@ function OnSave() {
 	//filePath += dlg.OutPutFileName.text;
 	
 	app.activeDocument.selection.deselect();
+	layers = app.activeDocument.layers;
 	
-	if (RemoveCopy) RenameLayers(app.activeDocument.layers);
+	if (RemoveCopy) RenameLayers(layers);
 	
 	app.activeDocument.save();
-	MergeLayers(app.activeDocument.layers);
+	MergeLayers(layers);
 
 	if (CreateXML) GenerateXMLFile(filePath);
 	if (CreateCSV) GenerateCoordinatesCSV(filePathCSV);
@@ -332,25 +357,43 @@ function OnSave() {
 	if (CreateTextStyles) GenerateTextStylesTXT(filePathTextStyles, fileNameEXT);
 	//dlg.close();
 	
-	layers = app.activeDocument.layers;
 	
 	var pngFolder = new Folder(app.activeDocument.path + "/" + fileName + "_png");
 	var pngFolderHD = new Folder(app.activeDocument.path + "/" + fileName + "_png_HD");
 	if (!pngFolder.exists && HalfSize) pngFolder.create();
 	if (!pngFolderHD.exists) pngFolderHD.create();
 	
-	for(i = 0; i < app.activeDocument.layers.length; i++) {
+	SaveAllLayers(fileName, layers);
+	
+	/*for(i = 0; i < app.activeDocument.layers.length; i++) {
 		if (app.activeDocument.layers[i].visible && app.activeDocument.layers[i].kind != LayerKind.TEXT) {
-			//SaveLayer(app.activeDocument.layers[i], dlg.OutPutDir.text );
 			if (HalfSize) SaveLayer(app.activeDocument.layers[i], app.activeDocument.path + "/" + fileName + "_png", true);
 			SaveLayer(app.activeDocument.layers[i], app.activeDocument.path + "/" + fileName + "_png_HD", false);	
 		}
-	}
+	}*/
+	
 	//alert("files saved");
 	//dlg.close();
 	executeAction(app.charIDToTypeID("Rvrt"), new ActionDescriptor(), DialogModes.NO);
 	app.activeDocument.save();
 	alert("Saving layers to files was successful.");
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//Flattens layers in the document so that they are prepped for export
+function SaveAllLayers(fileName, layers){
+    var len = layers.length;
+    var parent = layers.parent;
+    var newLayer;
+    for(var i = 0; i < len; i++){
+        var layer = layers[i];
+        if (layer.typename == 'ArtLayer' && layer.visible && layer.kind != LayerKind.TEXT) {
+            if (HalfSize) SaveLayer(layer, app.activeDocument.path + "/" + fileName + "_png", true);
+			SaveLayer(layer, app.activeDocument.path + "/" + fileName + "_png_HD", false);	
+        } else {
+			continue;
+		}
+	}
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -364,20 +407,14 @@ function MergeLayers(layers){
         if(layer.isBackgroundLayer){
             continue;
         }
-		//layer.allLocked = false;
+		layer.allLocked = false;
         if(layer.typename == 'ArtLayer' && layer.visible && layer.kind != LayerKind.TEXT) {
             newLayer = parent.artLayers.add();
             newLayer.name = layer.name; //PRO MOVES
             newLayer.move(layer, ElementPlacement.PLACEAFTER);
             layer.merge();
-        }
-    	else if(layer.typename == 'LayerSet' && layer.visible && layer.kind != LayerKind.TEXT){
+        } else if(layer.typename == 'LayerSet' && layer.visible && layer.kind != LayerKind.TEXT){
         	layer.merge();
-        	/*if (MergeGroups.value) {
-        		layer.merge();
-        	} else {
-        		//MergeLayers(layer.layers);
-			}*/
 		} else {
 			continue;
 		}
@@ -411,7 +448,7 @@ function SaveLayer(saveLayer, path, half) {
 	}
 	
 	//Resize the exported images prior to saving
-	if (half) {
+	if (half == true) {
 		sizeX = app.activeDocument.width.value;
 		sizeY = app.activeDocument.height.value;
 
@@ -422,14 +459,14 @@ function SaveLayer(saveLayer, path, half) {
 	}
 	
 	//Expand the canvas to the next highest powers of two
-	if (PowerOfTwo) {
+	if (PowerOfTwo == true) {
 		sizeX = app.activeDocument.width.value;
 		sizeY = app.activeDocument.height.value;
 		
 		powerOfTwoSizeX = power(sizeX);
 		powerOfTwoSizeY = power(sizeY);
 		
-		doc.resizeCanvas(powerOfTwoSizeX, powerOfTwoSizeY, AnchorPosition.TOPLEFT);
+		app.activeDocument.resizeCanvas(powerOfTwoSizeX, powerOfTwoSizeY, AnchorPosition.TOPLEFT);
 	}
 	
 	//Export a PNG of the target document using "Save for Web..." and then delete the target document
