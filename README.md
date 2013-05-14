@@ -7,7 +7,7 @@ Here's a quick tutorial on how to use **save_layers_to_files.jsx** and **assembl
 
 Step 1
 ----------------------------------------------------------------------------------------
-Label the layers you want to export and hide the layers you don't need. Run **save_layers_to_files.jsx** by going to **File->Scripts->Browse...** in Photoshop. It will take a few minutes to run through everything.  Groups will be merged into single layers unless the option is changed in the script.
+Tag the graphic layers _or_ groups you want to export by adding **.png** or **.jpg** on the end of the layer name. Run **save_layers_to_files.jsx** by going to **File->Scripts->Browse...** in Photoshop. It will take a few minutes to run through everything.
 
 _Note: be careful if you have layers that run off the canvas because the script duplicates entire layers before exporting, which could result in problems.  You can typically fix this by cropping the canvas at maximum size beforehand.  This issue will be fixed in a later update._
 
@@ -27,4 +27,4 @@ Create a new .fla file in Flash with the same name as your .psd file from step 1
 
 Step 4
 ----------------------------------------------------------------------------------------
-Within Flash, set your stage size to 800x480 or 480x800 (or to whatever resolution the game is using).  Next, run **assemble_ui.jsfl** by going to **Commands->Run Command...** and selecting that script.  The images will be imported from the **/\<filename\>_png/** folder and placed on the stage according to the variables from the .csv file.  The text .csv file will be used to create dynamic text fields with the same attributes as the text layers in the Photoshop document.  It isn't perfect but it's a close approximation.  Layer effects applied to text layers are ignored.
+Within Flash, run **assemble_ui.jsfl** by going to **Commands->Run Command...** and selecting that script.  The images will be imported from the **/\<filename\>_png/** folder and placed on the stage according to the variables from the .csv file.  The text .csv file will be used to create dynamic text fields with the same attributes as the text layers in the Photoshop document.  It isn't perfect but it's a close approximation.  Layer effects applied to text layers are ignored.
