@@ -1,510 +1,294 @@
-﻿////////////////////////////////////////////////////////////////////////////////////////////////
-//
-//  Save Layers To Files
-//  03/28/2013
-//  Rory Starks
-//
-////////////////////////////////////////////////////////////////////////////////////////////////
-
-if (app.documents.length == 0)
-	alert( 'Please open a Photoshop document to work with!' );
-else
-	app.preferences.rulerUnits = Units.PIXELS;
+﻿#target photoshop
+ 
+function main(){
+	if(!documents.length) return;
 	
-	//The follwing variables below can be adjusted manually.
-	HalfSize = true; 			//Assuming the source PSD is at HD resolution (double), this flag will generate images at half the size.
-	Trim = true;				//Trim the layer after pasting it into a new document that is the same resolution as the source PSD.
-	CreateCSV = true;			//Generate a CSV file, which is useful if you are using the AssembleUI.jsfl script in Flash.
-	CreateTextCSV = true;		//Generate a CSV file that includes text fields and style information.
-	CreateXML = true;			//Generate an XML file with x, y, height, and width information.
-	CreateTextStyles = true;	//Creates a text file with descriptive font style information.
-	PowerOfTwo = false;			//Each exported image will be in a power-of-two format (legacy support).
-	RemoveCopy = true;
-	MergeGroups = true;
-	//OnSave();
-	DisplayDialog();			//This will be updated later.
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//Creates the dialog box that is displayed when starting the script
-function DisplayDialog() {
-	//dlg = new Window( 'dialog', 'Save Layers to Files', [50,50,500,200] );
-	dlg = new Window( 'dialog', 'Save Layers to Files');
+	//preference variables
+	powerOfTwo = false;
+	resize = true;
+	trim = true;
+	writeCSVs = true;
+	writeXML = true;
+	writeTextStyles = true;
 	
-	//dlg style
-	var brush = dlg.graphics.newBrush(dlg.graphics.BrushType.THEME_COLOR, "appDialogBackground");
-    dlg.graphics.backgroundColor = brush;
-    dlg.graphics.disabledBackgroundColor = brush;
-
-	dlg.orientation = 'column';
-	dlg.alignChildren = 'left';
-
-	//dlg content	
-	dlg.GenerateHalfRes = dlg.add('checkbox', undefined, 'Generate half size');
-	dlg.GenerateHalfRes.value = true;
+	selectedSize = "xlarge";
 	
-	dlg.Trim = dlg.add('checkbox', undefined, 'Trim layers');
-	dlg.Trim.value = true;
+	var sizes = {
+		'xlarge' 	: 100,
+		'large'		: 66,
+		'normal'	: 50,
+		'small'		: 33
+	}
 	
-	//dlg.MergeGroups = dlg.add('checkbox', undefined, 'Merge top-level groups');
-	//dlg.MergeGroups.value = true;
-	
-	dlg.GenerateXML = dlg.add('checkbox', undefined, 'Generate XML file');
-	dlg.GenerateXML.value = true;
+	var doc = activeDocument;
+	var oldPath = activeDocument.path;
 
-	dlg.FlashInfo = dlg.add('checkbox', undefined, 'Generate Flash import CSV files');
-	dlg.FlashInfo.value = true;
-	
-	dlg.GenerateTextStyles = dlg.add('checkbox', undefined, 'Generate text style info');
-	dlg.GenerateTextStyles.value = true;
-	
-	dlg.PowerOfTwo = dlg.add('checkbox', undefined, 'Power of two');
-	dlg.PowerOfTwo.value = false;
-	
-	dlg.RemoveCopy = dlg.add('checkbox', undefined, 'Remove \"copy ###\" from layer names');
-	dlg.RemoveCopy.value = true;
-
-	/*dlg.add( "statictext", [30, 35, 100, 60], 'Output Dir :' );
-	dlg.OutPutDir = dlg.add( 'edittext', [100, 40, 320, 60], "" );
-	dlg.BrowseOutPutDir = dlg.add( 'button', [325, 40, 355, 60], '...' );
-	dlg.BrowseOutPutDir.onClick = BrowseOutPutDirectory;*/
-
-	dlg.Cancel = dlg.add( 'button', undefined, 'Cancel' )
-	dlg.Cancel.onClick = OnCancel();
-	dlg.Ok = dlg.add( 'button', undefined, 'OK' )
-	dlg.Ok.onClick = OnSave;
-
-	dlg.cancelElement = dlg.Cancel;
-	
-	dlg.show();
-
-	return true;
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//Generates a text file with descriptive style information based on text layers within the Photoshop document
-function GenerateTextStylesTXT(file, filename) {
-	var layers = app.activeDocument.layers;
-	var len =  layers.length;
-
-	var fout = File( file );
-	fout.open( "w" );
-	
-	var TextStyles = "Text Style information for " + filename + "\n";
-	TextStyles += "==========================================================================\n\n";
+	//prepare text strings that will be used for the output files
+	var CSVGraphics = "";
+	var CSVText = "";
+	var XMLText  = '<layout sourcefile="' + doc.name + '">\n';
+	var textStyles = "Text Style information for " + doc.name + "\n==========================================================================\n\n";
     
-	for (var i = 0; i < len; i++) {
-		if (layers[i].visible && layers[i].kind == LayerKind.TEXT) {
-			var suffix = layers[i].name.slice(4);
-			var prefix = layers[i].name.slice(0, 3);
+    //creates the output folder for the exported images
+	var outFolder = new Folder(oldPath + "/" + doc.name.substr(0, doc.name.length - 4) + "_png");
+	if (!outFolder.exists) { outFolder.create(); }
 	
-			//name;contents;leftPos;topPos;rightPos;bottomPos;caps;font;color;size;
-			var name = layers[i].name;
-	  		var contents = layers[i].textItem.contents;
-	
-			var leftPos = layers[i].bounds[0]; 
-			var topPos = layers[i].bounds[1];
-			var rightPos = layers[i].bounds[2];
-			var bottomPos = layers[i].bounds[3];
-			var caps = layers[i].textItem.capitalization=="TextCase.NORMAL"?"normal":"uppercase";
-			var font = layers[i].textItem.font;
-			var color = layers[i].textItem.color.rgb.hexValue?layers[i].textItem.color.rgb.hexValue:'';
-			var size = layers[i].textItem.size;
-			var align = layers[i].textItem.justification.toString();
-			//align = align.replace("Justification.","").toLowerCase();
-			
-			if (HalfSize == true) {
-				leftPos = Math.floor(leftPos * 0.5);
-				topPos = Math.floor(topPos * 0.5);
-				rightPos = Math.floor(rightPos * 0.5);
-				bottomPos = Math.floor(bottomPos * 0.5);
-				size = Math.floor(size * 0.5);
-			}
+	//prepare output files
+	var CSVGraphicsOutput = File(oldPath + "/" + doc.name.substr(0, doc.name.length - 4) + ".csv");
+	var CSVTextOutput = File(oldPath + "/" + doc.name.substr(0, doc.name.length - 4) + "_text.csv");
+	var XMLOutput = File(oldPath + "/" + doc.name.substr(0, doc.name.length - 4) + ".xml");
+	var textOutput = File(oldPath + "/" + doc.name.substr(0, doc.name.length - 4) + "_text_styles.txt");
 
-			TextStyles += "--------------------------------------------------------------------------\n";
-			TextStyles += "Layer Name:                " + name + "\n";
-			TextStyles += "Content:                   " + contents.replace(/\r/gm,' ') + "\n";
-			TextStyles += "Location (left,top):       " + leftPos + "," + topPos + "\n";
-			TextStyles += "Location (right,bottom):   " + rightPos + "," + bottomPos + "\n";
-			TextStyles += "Capitalization Style:      " + caps + "\n";
-			TextStyles += "Font Name:                 " + font + "\n";
-			TextStyles += "Color (hex value):         #" + color + "\n";
-			TextStyles += "Font Size:                 " + size + "\n";
-			TextStyles += "Alignment:                 " + align.replace("Justification.","").toLowerCase() + "\n";
-			TextStyles += "\n\n";
+	//runs the two main functions of the script
+	scanLayerSets(doc);
+	scanTextLayers(doc.layers);
+ 
+ 	//scans the document looking for layers with .png, .jpg, or .jpeg at the end of the name
+	function scanLayerSets(el) {
+    	// find layer groups
+    	for(var a=0;a<el.layerSets.length;a++){
+			var lname = el.layerSets[a].name;
+        	if (lname.substr(-4) == ".png" || lname.substr(-4) == ".jpg" || lname.substr(-4) == ".jpeg") {
+				saveLayer(el.layers.getByName(lname), lname, oldPath, true);
+				if (writeCSVs || writeXML) writeGraphicsLayer(el.layers.getByName(lname), lname);
+        	} else {
+            	// recursive
+            	scanLayerSets(el.layerSets[a]);
+			}
+		}
+    
+ 		// find plain layers in current group whose names end with .png
+    	for(var j=0; j<el.artLayers.length; j++) {
+    		var name = el.artLayers[j].name;
+    		if (name.substr(-4) == ".png" || name.substr(-4) == ".jpg" || name.substr(-5) == ".jpeg") {
+				saveLayer(el.layers.getByName(name), name, oldPath, false);
+				if (writeCSVs || writeXML) writeGraphicsLayer(el.layers.getByName(name), name);
+			}
 		}
 	}
-	TextStyles += "==========================================================================\n";
-	fout.writeln(TextStyles);
-	fout.close();
-}
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//Generates a CSV based on text layers within the Photoshop document
-function GenerateTextCSV(file) {
-	//var activeDoc = app.activeDocument;
-	var layers = app.activeDocument.layers;
-	var len =  layers.length;
-
-	var fout = File( file );
-	fout.open( "w" );
-	
-	var CSVText = "";
-    
-	for (var i = 0; i < len; i++) {
-		if (layers[i].visible && layers[i].kind == LayerKind.TEXT) {
-			var suffix = layers[i].name.slice(4);
-			var prefix = layers[i].name.slice(0, 3);
-	
-			//name;contents;leftPos;topPos;rightPos;bottomPos;caps;font;color;size;
-			var name = layers[i].name;
-	  		var contents = layers[i].textItem.contents;
-	
-			var leftPos = layers[i].bounds[0]; 
-			var topPos = layers[i].bounds[1];
-			var rightPos = layers[i].bounds[2];
-			var bottomPos = layers[i].bounds[3];
-			var caps = layers[i].textItem.capitalization=="TextCase.NORMAL"?"normal":"uppercase";
-			var font = layers[i].textItem.font;
-			var color = layers[i].textItem.color.rgb.hexValue?layers[i].textItem.color.rgb.hexValue:'';
-			var size = layers[i].textItem.size;
-			var align = layers[i].textItem.justification;
-			
-			if (HalfSize == true) {
-				leftPos = Math.floor(leftPos * 0.5);
-				topPos = Math.floor(topPos * 0.5);
-				rightPos = Math.floor(rightPos * 0.5);
-				bottomPos = Math.floor(bottomPos * 0.5);
-				size = Math.floor(size * 0.5);
-			}
-	  		
-	  		if (CSVText == "") {
-				CSVText += name;
-			} else {
-				CSVText += ";" + name;
-			}
-			
-			CSVText += ";" + contents;
-			CSVText += ";" + leftPos;
-			CSVText += ";" + topPos;
-			CSVText += ";" + rightPos;
-			CSVText += ";" + bottomPos;
-			CSVText += ";" + caps;
-			CSVText += ";" + font;
-			CSVText += ";" + color;
-			CSVText += ";" + size;
-			CSVText += ";" + align;
+	//saves the layer as a JPG or PNG based on the extension of the layer name
+	function saveLayer(layer, lname, path, shouldMerge) {
+		activeDocument.activeLayer = layer;
+		dupLayers();
+		if (shouldMerge === undefined || shouldMerge === true) {
+			activeDocument.mergeVisibleLayers();
 		}
-	}
-	fout.writeln(CSVText);
-	fout.close();
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//Generates a CSV based on visible layers within the Photoshop document
-function GenerateCoordinatesCSV(file) {
-	//var activeDoc = app.activeDocument;
-	var layers = app.activeDocument.layers;
-	var len =  layers.length;
-
-	var fout = File( file );
-	fout.open( "w" );
-	
-	var CSVText = "";
-    
-	for (var i = 0; i < len; i++) {
-		if (layers[i].visible && layers[i].kind != LayerKind.TEXT) {
-			var suffix = layers[i].name.slice(4);
-			var prefix = layers[i].name.slice(0, 3);
-	
-			var xPos = layers[i].bounds[0]; 
-			var yPos = layers[i].bounds[1];
+		
+		//trims the canvas
+		if (trim) {
+			activeDocument.trim(TrimType.TRANSPARENT,true,true,true,true);
+		}
+		
+		//resizes the image based on the selected size percentage
+		if (resize) {
+			modifier = sizes[selectedSize]/100;
 			
-			if (HalfSize == true) {
+			sizeX = activeDocument.width.value;
+			sizeY = activeDocument.height.value;
+
+			resizeX = Math.floor(sizeX * modifier);
+			resizeY = Math.floor(sizeY * modifier);
+
+			activeDocument.resizeImage(resizeX, resizeY, null, ResampleMethod.BICUBIC);
+		}
+		
+		//enlarges the canvas height and width to the next highest powers of two
+		if (powerOfTwo) {
+			sizeX = activeDocument.width.value;
+			sizeY = activeDocument.height.value;
+		
+			powerOfTwoSizeX = power(sizeX);
+			powerOfTwoSizeY = power(sizeY);
+		
+			activeDocument.resizeCanvas(powerOfTwoSizeX, powerOfTwoSizeY, AnchorPosition.TOPLEFT);
+		}
+		
+		var saveFile = File(path + "/" + doc.name.substr(0, doc.name.length - 4) + "_png/"+lname);
+		if (lname.substr(-4) == ".png") {
+			SavePNG(saveFile);
+		} else if (lname.substr(-4) == ".jpg" || lname.substr(-5) == ".jpeg") {
+			SaveJPEG(saveFile);
+		}			
+		app.activeDocument.close(SaveOptions.DONOTSAVECHANGES);
+	}
+	
+	//creates coordinate CSVs that can be read by the Flash script
+	function writeGraphicsLayer(layer, lname) {
+		modifier = sizes[selectedSize]/100;
+		xPos = Math.floor(layer.bounds[0] * modifier); 
+		yPos = Math.floor(layer.bounds[1] * modifier);
+		yPosLB = Math.floor(((layer.bounds[3] * -1) + activeDocument.height.value) * modifier);
+		width = Math.floor((layer.bounds[2] - layer.bounds[0]) * modifier);
+		height = Math.floor((layer.bounds[3] - layer.bounds[1]) * modifier);
+		
+		//write coordinate CSV file
+		if (writeCSVs) {
+			/*if (HalfSize == true) {
 				xPos = Math.floor(xPos * 0.5);
 				yPos = Math.floor(yPos * 0.5);
-			}
-
-	  		var filePath = layers[i].name;
-	  		if (CSVText == "") {
-				CSVText += filePath;
+			}*/
+			
+	  		if (CSVGraphics == "") {
+				CSVGraphics += lname.replace(/\s/g , "-");
 			} else {
-				CSVText += ";" + filePath;
+				CSVGraphics += ";" + lname.replace(/\s/g , "-");
 			}
-			CSVText += ";" + xPos;
-			CSVText += ";" + yPos;
-			//CSVText += "\n";
+			
+			CSVGraphics += ";" + xPos;
+			CSVGraphics += ";" + yPos;
+		}
+		//write XML file
+		if (writeXML) {
+			XMLText += '   <img filename="' + lname.replace(/\s/g , "-") + '" x="' + xPos + '" y="' + yPosLB + '" width="' + width + '" height="' + height + '" />\n';
 		}
 	}
-	fout.writeln(CSVText);
-	fout.close();
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//Generates an XML based on visible layers within the Photoshop document
-function GenerateXMLFile(file) {
-
-	var layers = app.activeDocument.layers;
-	var len =  layers.length;
 	
-	var modifier = 1;
-	if (HalfSize == true) { modifier = 0.5; }
+	//scans all text layers and then writes text style info or CSV data depending on the user preferences
+	function scanTextLayers(layers) {
+		for(var t=0;t<layers.length;t++){
+			if(layers[t].typename == "LayerSet") {
+				scanTextLayers(layers[t].layers);
+			} else {
+				if(layers[t].kind == LayerKind.TEXT) {
+					if (writeTextStyles) writeTextLayer(layers[t]);
+					if (writeCSVs) writeTextCSV(layers[t]);
+				}
+			}
+		}
+	}
 	
-	var fout = File( file );
-	fout.open( "w" );
+	//writes the given text layer info to the textStyles variable which will eventually be added to the text style TXT file
+	function writeTextLayer(layer) {
+		modifier = sizes[selectedSize]/100;
+		var name = layer.name;
+	  	var contents = layer.textItem.contents;
+	
+		var leftPos = Math.floor(layer.bounds[0] * modifier);
+		var topPos = Math.floor(layer.bounds[1] * modifier);
+		var rightPos = Math.floor(layer.bounds[2] * modifier);
+		var bottomPos = Math.floor(layer.bounds[3] * modifier);
+		var caps = layer.textItem.capitalization=="TextCase.NORMAL"?"normal":"uppercase";
+		var font = layer.textItem.font;
+		var color = layer.textItem.color.rgb.hexValue?layer.textItem.color.rgb.hexValue:'';
+		var size = Math.floor(layer.textItem.size * modifier);
+		var align = layer.textItem.justification.toString();
 
-	var XMLText  = '<layout sourcefile="' + app.activeDocument.name + '">\n';
-
-	for (var i = 0; i < len; i++) {
-		if (layers[i].visible && layers[i].kind != LayerKind.TEXT) {			
-			var suffix = layers[i].name.slice(4);
-			var prefix = layers[i].name.slice(0, 3);
+		textStyles += "--------------------------------------------------------------------------\n";
+		textStyles += "Layer Name:                " + name + "\n";
+		textStyles += "Content:                   " + contents.replace(/\r/gm,' ') + "\n";
+		textStyles += "Location (left,top):       " + leftPos + "," + topPos + "\n";
+		textStyles += "Location (right,bottom):   " + rightPos + "," + bottomPos + "\n";
+		textStyles += "Capitalization Style:      " + caps + "\n";
+		textStyles += "Font Name:                 " + font + "\n";
+		textStyles += "Color (hex value):         #" + color + "\n";
+		textStyles += "Font Size:                 " + size + "px \n";
+		textStyles += "Alignment:                 " + align.replace("Justification.","").toLowerCase() + "\n";
+		textStyles += "\n\n";
 		
-			//Coordinates
-			var width = Math.floor((layers[i].bounds[2] - layers[i].bounds[0]) * modifier);
-			var height = Math.floor((layers[i].bounds[3] - layers[i].bounds[1]) * modifier);
-			var xPos = Math.floor(layers[i].bounds[0] * modifier); 
-			var yPos = Math.floor(layers[i].bounds[1] * modifier);
-			//var yPosLB = Math.floor(((layers[i].bounds[1] * -1) + app.activeDocument.height.value) * modifier);
-			var yPosLB = Math.floor(((layers[i].bounds[3] * -1) + app.activeDocument.height.value) * modifier);
-
-	  		//PNG info
-			XMLText += '   <png filename="' + layers[i].name + '.png" x="' + xPos + '" y="' + yPosLB + '" width="' + width + '" height="' + height + '" />\n';
-		}
 	}
-
-	XMLText  += "<\layout>";
-
-	//fout.writeln(backgroundText);
-	fout.writeln(XMLText);
-	fout.close();
-	//alert(file);
-}
-
-
-function Format(yendo) {
-	var text = "";
-	text += yendo;
-	var index = text.indexOf( " ", 0 );
-	return text.substring(0, index);
-}
-
-
-function BrowseOutPutDirectory() {
-	var heading = "Please select a directory";
-	dlg.OutPutDir.text = Folder ( Folder.selectDialog( heading, dlg.OutPutDir.text )).fsName; 
-}
-
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//Removes "copy ###" from the end of a layer name
-function RenameLayers(layers) {
-	var len =  layers.length;
-	var parent = layers.parent;
-	//Recursively goes through the document looking for "copy ###" and removes it on all visible layers
-	for (var i = 0;i < len; i++){
-		var layer = layers[i];
-		if(layer.typename == 'ArtLayer' && layer.visible) {
-			var oldName = layer.name;
-			var newName = oldName.replace(/\scopy.*$/i,'');
-			layer.name = newName;
+	
+	//writes a list of information that can be read by the Flash import script
+	function writeTextCSV(layer) {
+		modifier = sizes[selectedSize]/100;
+		var name = layer.name;
+	  	var contents = layer.textItem.contents;
+	
+		var leftPos = Math.floor(layer.bounds[0] * modifier); 
+		var topPos = Math.floor(layer.bounds[1] * modifier);
+		var rightPos = Math.floor(layer.bounds[2] * modifier);
+		var bottomPos = Math.floor(layer.bounds[3] * modifier);
+		var caps = layer.textItem.capitalization=="TextCase.NORMAL"?"normal":"uppercase";
+		var font = layer.textItem.font;
+		var color = layer.textItem.color.rgb.hexValue?layer.textItem.color.rgb.hexValue:'';
+		var size = Math.floor(layer.textItem.size * modifier);
+		var align = layer.textItem.justification;
+	 		
+ 		if (CSVText == "") {
+			CSVText += name;
 		} else {
-			continue;
+			CSVText += ";" + name;
 		}
+			
+		CSVText += ";" + contents;
+		CSVText += ";" + leftPos;
+		CSVText += ";" + topPos;
+		CSVText += ";" + rightPos;
+		CSVText += ";" + bottomPos;
+		CSVText += ";" + caps;
+		CSVText += ";" + font;
+		CSVText += ";" + color;
+		CSVText += ";" + size;
+		CSVText += ";" + align;
 	}
-}
 
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//Closes the dialog
-function OnCancel() {
-	dlg.close()
-}
-
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//Main function that generates XML and starts the layer export process
-function OnSave() {
-	dlg.close();
-	HalfSize = dlg.GenerateHalfRes.value;
-	Trim = dlg.Trim.value;
-	CreateXML = dlg.GenerateXML.value;
-	CreateTextStyles = dlg.GenerateTextStyles.value;
-	PowerOfTwo = dlg.PowerOfTwo.value;
-	CreateCSV = dlg.FlashInfo.value;
-	CreateTextCSV = dlg.FlashInfo.value;
-	RemoveCopy = dlg.RemoveCopy.value;
-	//MergeGroups = dlg.MergeGroups.value;
-
-	fileNameEXT = app.activeDocument.name;
-	fileName = fileNameEXT.substr(0, fileNameEXT.length - 4);
-	filePath = app.activeDocument.path + "/" + fileName + ".xml";
-	filePathCSV = app.activeDocument.path + "/" + fileName + ".csv";
-	filePathTextCSV = app.activeDocument.path + "/" + fileName + "_text.csv";
-	filePathTextStyles = app.activeDocument.path + "/" + fileName + "_text_styles.txt";
-	//filePath += dlg.OutPutFileName.text;
-	
-	app.activeDocument.selection.deselect();
-	layers = app.activeDocument.layers;
-	
-	if (RemoveCopy) RenameLayers(layers);
-	
-	app.activeDocument.save();
-	MergeLayers(layers);
-
-	if (CreateXML) GenerateXMLFile(filePath);
-	if (CreateCSV) GenerateCoordinatesCSV(filePathCSV);
-	if (CreateTextCSV) GenerateTextCSV(filePathTextCSV);
-	if (CreateTextStyles) GenerateTextStylesTXT(filePathTextStyles, fileNameEXT);
-	//dlg.close();
-	
-	
-	var pngFolder = new Folder(app.activeDocument.path + "/" + fileName + "_png");
-	var pngFolderHD = new Folder(app.activeDocument.path + "/" + fileName + "_png_HD");
-	if (!pngFolder.exists && HalfSize) pngFolder.create();
-	if (!pngFolderHD.exists) pngFolderHD.create();
-	
-	SaveAllLayers(fileName, layers);
-	
-	/*for(i = 0; i < app.activeDocument.layers.length; i++) {
-		if (app.activeDocument.layers[i].visible && app.activeDocument.layers[i].kind != LayerKind.TEXT) {
-			if (HalfSize) SaveLayer(app.activeDocument.layers[i], app.activeDocument.path + "/" + fileName + "_png", true);
-			SaveLayer(app.activeDocument.layers[i], app.activeDocument.path + "/" + fileName + "_png_HD", false);	
-		}
-	}*/
-	
-	//alert("files saved");
-	//dlg.close();
-	executeAction(app.charIDToTypeID("Rvrt"), new ActionDescriptor(), DialogModes.NO);
-	app.activeDocument.save();
-	alert("Saving layers to files was successful.");
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//Flattens layers in the document so that they are prepped for export
-function SaveAllLayers(fileName, layers){
-    var len = layers.length;
-    var parent = layers.parent;
-    var newLayer;
-    for(var i = 0; i < len; i++){
-        var layer = layers[i];
-        if (layer.typename == 'ArtLayer' && layer.visible && layer.kind != LayerKind.TEXT) {
-            if (HalfSize) SaveLayer(layer, app.activeDocument.path + "/" + fileName + "_png", true);
-			SaveLayer(layer, app.activeDocument.path + "/" + fileName + "_png_HD", false);	
-        } else {
-			continue;
-		}
-	}
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//Flattens layers in the document so that they are prepped for export
-function MergeLayers(layers){
-    var len = layers.length;
-    var parent = layers.parent;
-    var newLayer;
-    for(var i = 0; i < len; i++){
-        var layer = layers[i];
-        if(layer.isBackgroundLayer){
-            continue;
-        }
-		layer.allLocked = false;
-        if(layer.typename == 'ArtLayer' && layer.visible && layer.kind != LayerKind.TEXT) {
-            newLayer = parent.artLayers.add();
-            newLayer.name = layer.name; //PRO MOVES
-            newLayer.move(layer, ElementPlacement.PLACEAFTER);
-            layer.merge();
-        } else if(layer.typename == 'LayerSet' && layer.visible && layer.kind != LayerKind.TEXT){
-        	layer.merge();
-		} else {
-			continue;
-		}
-	}
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//Takes the active layer and saves it within the <filename>_png or <filename>_png_HD directory
-function SaveLayer(saveLayer, path, half) {
-	//This script duplicates the layer from the source document and places it into a new document so that it can be saved
-	var sourceDoc = app.activeDocument;
-
-	//Create a new document with the same height, width, and resolution as the source document
-	var targetDoc = app.documents.add(sourceDoc.width, sourceDoc.height, sourceDoc.resolution, "temp", NewDocumentMode.RGB, DocumentFill.TRANSPARENT, 1);
-	//Switch focus to the source document
-	app.activeDocument = sourceDoc;
-
-	//Duplicate the layer from the source document to the target document
-	try {
-  		saveLayer.duplicate(targetDoc, ElementPlacement.INSIDE); // ** changed to sourceDoc **
-	} catch(e) {
-  		alert(e)
-	}
-	//Switch back to the target document
-	app.activeDocument = targetDoc;
-	
-	//TO DO
-	//TRIM THE DOCUMENT IF THE TRIM CHECKBOX WAS CHECKED
-	if (Trim == true) {
-		app.activeDocument.trim(TrimType.TRANSPARENT);
-	}
-	
-	//Resize the exported images prior to saving
-	if (half == true) {
-		sizeX = app.activeDocument.width.value;
-		sizeY = app.activeDocument.height.value;
-
-		newSizeX = Math.floor(sizeX * 0.5);
-		newSizeY = Math.floor(sizeY * 0.5);
-
-		app.activeDocument.resizeImage(newSizeX, newSizeY, null, ResampleMethod.BICUBIC);
-	}
-	
-	//Expand the canvas to the next highest powers of two
-	if (PowerOfTwo == true) {
-		sizeX = app.activeDocument.width.value;
-		sizeY = app.activeDocument.height.value;
+	//the following if statements finish up and save out any of the requested data files
+	if (writeCSVs) {
+		CSVGraphicsOutput.open("w");
+		CSVGraphicsOutput.writeln(CSVGraphics);
+		CSVGraphicsOutput.close();
 		
-		powerOfTwoSizeX = power(sizeX);
-		powerOfTwoSizeY = power(sizeY);
-		
-		app.activeDocument.resizeCanvas(powerOfTwoSizeX, powerOfTwoSizeY, AnchorPosition.TOPLEFT);
+		CSVTextOutput.open("w");
+		CSVTextOutput.writeln(CSVText);
+		CSVTextOutput.close();
 	}
 	
-	//Export a PNG of the target document using "Save for Web..." and then delete the target document
-	saveForWebPNG(path,saveLayer.name);
-	targetDoc.close( SaveOptions.DONOTSAVECHANGES ); 
-	targetDoc = null;
+	if (writeXML) {
+		XMLText  += "<\layout>";
+		XMLOutput.open("w");
+		XMLOutput.writeln(XMLText);
+		XMLOutput.close();
+	}
 	
-	app.activeDocument = sourceDoc;
+	if (writeTextStyles) {
+		textStyles += "==========================================================================\n";
+		textOutput.open("w");
+		textOutput.writeln(textStyles);
+		textOutput.close();
+	}
+};
+ 
+main();
+
+function dupLayers() {
+	var desc143 = new ActionDescriptor();
+	var ref73 = new ActionReference();
+	ref73.putClass( charIDToTypeID('Dcmn') );
+	desc143.putReference( charIDToTypeID('null'), ref73 );
+	desc143.putString( charIDToTypeID('Nm  '), activeDocument.activeLayer.name );
+	var ref74 = new ActionReference();
+	ref74.putEnumerated( charIDToTypeID('Lyr '), charIDToTypeID('Ordn'), charIDToTypeID('Trgt') );
+	desc143.putReference( charIDToTypeID('Usng'), ref74 );
+	executeAction( charIDToTypeID('Mk  '), desc143, DialogModes.NO );
+};
+
+//export script for PNG files
+function SavePNG(saveFile){
+	var pngOpts = new ExportOptionsSaveForWeb; 
+	pngOpts.format = SaveDocumentType.PNG;
+	pngOpts.PNG8 = false; 
+	pngOpts.transparency = true; 
+	pngOpts.interlaced = false; 
+	pngOpts.quality = 100;
+	activeDocument.exportDocument(new File(saveFile),ExportType.SAVEFORWEB,pngOpts); 
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//This function replicates the "Save for Web..." feature of Photoshop
-function saveForWebPNG(path, filename) {
-    var opts, file;
-    opts = new ExportOptionsSaveForWeb();
-    opts.format = SaveDocumentType.PNG;
-    opts.PNG8 = false;
-    opts.quality = 100;
-    if (filename.length > 27) {
-        file = new File(path + "/temp.png");
-        app.activeDocument.exportDocument(file, ExportType.SAVEFORWEB, opts);
-        file.rename(filename + ".png");
-    }
-    else {
-        file = new File(path + "/" + filename + ".png");
-        app.activeDocument.exportDocument(file, ExportType.SAVEFORWEB, opts);
-    }
+//export script for JPEG files
+function SaveJPEG(saveFile){
+	var jpegOpts = new ExportOptionsSaveForWeb; 
+	jpegOpts.format = SaveDocumentType.JPEG;
+	jpegOpts.optimized = true;
+	activeDocument.exportDocument(new File(saveFile),ExportType.SAVEFORWEB,jpegOpts); 
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//This function will get the next highest power of two number for a given number
-function power(Size) {
+//function for determining next highest power-of-two value based on a given integer
+function power(size) {
 	var powerTwo = 2;
 	var i = 1;
-	while (powerTwo < Size) {
+	while (powerTwo < size) {
 		powerTwo = Math.pow(2, i);
-		i= i+1;
+		i = i + 1;
 	}
-	Size = powerTwo;
-	return(Size);   
+	size = powerTwo;
+	return(size);   
 }

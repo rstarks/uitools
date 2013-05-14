@@ -28,6 +28,8 @@ var filePath = doc.path;
 filePath = filePath.substring(0, filePath.lastIndexOf(fileName));
 fl.trace("Flash file: " + filePath + fileName);
 
+fl.trace(filePath);
+
 if (fl.getDocumentDOM() == null) {
 	fl.trace("Error: No document open.");
 	alert("Error: No document open.");
@@ -54,9 +56,9 @@ var t = textParsed.length - 1;
 //The data is used to import and place each item on the stage with the corresponding image from the /<filename>_png/ folder that Photoshop created.
 while (n > 0) {
 	//importFileToStage("file:///" + filePath + fileName.substr(0, fileName.length - 4) + "_png/" + parsed[n-2] + ".png", parsed[n-2] + ".png", parsed[n-1], parsed[n]);
-	importFileToStage("file:///" + filePath + fileName.substr(0, fileName.length - 4) + "_png/" + parsed[n-2] + ".png", parsed[n-2] + ".png", parsed[n-1], parsed[n]);
+	importFileToStage("file:///" + filePath + fileName.substr(0, fileName.length - 4) + "_png/" + parsed[n-2], parsed[n-2], parsed[n-1], parsed[n]);
 	//This line displays output from the import process so that you can check x/y coordinates with what appears on the stage.
-	fl.trace(parsed[n-2] + ".png placed at " + parsed[n-1] + "," + parsed[n]);
+	fl.trace(parsed[n-2] + " placed at " + parsed[n-1] + "," + parsed[n]);
 	n = n - 3;
 }
 
@@ -158,6 +160,7 @@ function importFileToStage(filePath,fileName,importX,importY) {
 	//fl.trace("Pre item index = " + doc.library.findItemIndex(fileName));
 	//Import the file
 	if (doc.library.findItemIndex(fileName) == "") {
+		fl.trace(filePath + " " + fileName);
 		doc.importFile(filePath, true);
 		itemIndex = doc.library.findItemIndex(fileName);
 		theItem = doc.library.items[itemIndex];
