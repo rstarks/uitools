@@ -14,10 +14,10 @@ function main(){
 	//preference variables
 	powerOfTwo = false;
 	resize = true;
-	trim = true;
-	writeCSVs = true;
-	writeXML = true;
-	writeTextStyles = true;
+	trim = false;
+	writeCSVs = false;
+	writeXML = false;
+	writeTextStyles = false;
 	
 	selectedSize = "xlarge";
 	
@@ -38,7 +38,7 @@ function main(){
 	var textStyles = "Text Style information for " + doc.name + "\n==========================================================================\n\n";
     
     //creates the output folder for the exported images
-	var outFolder = new Folder(oldPath + "/" + doc.name.substr(0, doc.name.length - 4) + "_png");
+	var outFolder = new Folder(oldPath + "/export");
 	if (!outFolder.exists) { outFolder.create(); }
 	
 	//prepare output files
@@ -112,7 +112,7 @@ function main(){
 			activeDocument.resizeCanvas(powerOfTwoSizeX, powerOfTwoSizeY, AnchorPosition.TOPLEFT);
 		}
 		
-		var saveFile = File(path + "/" + doc.name.substr(0, doc.name.length - 4) + "_png/"+lname);
+		var saveFile = File(path + "/export/"+lname);
 		if (lname.substr(-4) == ".png") {
 			SavePNG(saveFile);
 		} else if (lname.substr(-4) == ".jpg" || lname.substr(-5) == ".jpeg") {
@@ -124,7 +124,6 @@ function main(){
 	//creates coordinate CSVs that can be read by the Flash script
 	function writeGraphicsLayer(layer, lname) {
 		modifier = sizes[selectedSize]/100;
-		
 		xPos = Math.floor(layer.bounds[0] * modifier); 
 		yPos = Math.floor(layer.bounds[1] * modifier);
 		yPosLB = Math.floor(((layer.bounds[3] * -1) + activeDocument.height.value) * modifier);
@@ -255,8 +254,6 @@ function main(){
 		textOutput.writeln(textStyles);
 		textOutput.close();
 	}
-	
-	alert("Saving layers to files was successful.");
 };
  
 main();
@@ -303,4 +300,3 @@ function power(size) {
 	size = powerTwo;
 	return(size);   
 }
-
