@@ -14,12 +14,13 @@ function main(){
 	//preference variables
 	powerOfTwo = false;
 	resize = true;
+	fullRes = true;
 	trim = true;
 	writeCSVs = true;
 	writeXML = true;
 	writeTextStyles = true;
 	
-	selectedSize = "xlarge";
+	selectedSize = "normal";
 	
 	var sizes = {
 		'xlarge' 	: 100,
@@ -41,6 +42,11 @@ function main(){
 	var outFolder = new Folder(oldPath + "/" + doc.name.substr(0, doc.name.length - 4) + "_png");
 	if (!outFolder.exists) { outFolder.create(); }
 	
+	if (fullRes) {
+		var outFolderHD = new Folder(oldPath + "/" + doc.name.substr(0, doc.name.length - 4) + "_png_HD");
+		if (!outFolderHD.exists) { outFolderHD.create(); }
+	}
+	
 	//prepare output files
 	var CSVGraphicsOutput = File(oldPath + "/" + doc.name.substr(0, doc.name.length - 4) + ".csv");
 	var CSVTextOutput = File(oldPath + "/" + doc.name.substr(0, doc.name.length - 4) + "_text.csv");
@@ -57,7 +63,8 @@ function main(){
     	for(var a=0;a<el.layerSets.length;a++){
 			var lname = el.layerSets[a].name;
         	if (lname.substr(-4) == ".png" || lname.substr(-4) == ".jpg" || lname.substr(-4) == ".jpeg") {
-				saveLayer(el.layers.getByName(lname), lname, oldPath, true);
+				saveLayer(el.layers.getByName(lname), lname, oldPath, true, resize);
+				if (fullRes) saveLayer(el.layers.getByName(lname), lname, oldPath, true, false); //HD save
 				if (writeCSVs || writeXML) writeGraphicsLayer(el.layers.getByName(lname), lname);
         	} else {
             	// recursive
@@ -69,14 +76,15 @@ function main(){
     	for(var j=0; j<el.artLayers.length; j++) {
     		var name = el.artLayers[j].name;
     		if (name.substr(-4) == ".png" || name.substr(-4) == ".jpg" || name.substr(-5) == ".jpeg") {
-				saveLayer(el.layers.getByName(name), name, oldPath, false);
+				saveLayer(el.layers.getByName(name), name, oldPath, false, resize);
+				if (fullRes) saveLayer(el.layers.getByName(name), name, oldPath, false, false); //HD save
 				if (writeCSVs || writeXML) writeGraphicsLayer(el.layers.getByName(name), name);
 			}
 		}
 	}
 
 	//saves the layer as a JPG or PNG based on the extension of the layer name
-	function saveLayer(layer, lname, path, shouldMerge) {
+	function saveLayer(layer, lname, path, shouldMerge, shouldResize) {
 		activeDocument.activeLayer = layer;
 		dupLayers();
 		if (shouldMerge === undefined || shouldMerge === true) {
@@ -89,7 +97,7 @@ function main(){
 		}
 		
 		//resizes the image based on the selected size percentage
-		if (resize) {
+		if (shouldResize) {
 			modifier = sizes[selectedSize]/100;
 			
 			sizeX = activeDocument.width.value;
@@ -112,7 +120,14 @@ function main(){
 			activeDocument.resizeCanvas(powerOfTwoSizeX, powerOfTwoSizeY, AnchorPosition.TOPLEFT);
 		}
 		
-		var saveFile = File(path + "/" + doc.name.substr(0, doc.name.length - 4) + "_png/"+lname);
+		if (fullRes && !shouldResize) { 
+			folderSuffix = "_png_HD/";
+		} else {
+			folderSuffix = "_png/";
+		}
+		
+		var saveFile = File(path + "/" + doc.name.substr(0, doc.name.length - 4) + folderSuffix + lname);
+		
 		if (lname.substr(-4) == ".png") {
 			SavePNG(saveFile);
 		} else if (lname.substr(-4) == ".jpg" || lname.substr(-5) == ".jpeg") {
