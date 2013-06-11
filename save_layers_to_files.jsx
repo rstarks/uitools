@@ -63,9 +63,9 @@ function main(){
     	for(var a=0;a<el.layerSets.length;a++){
 			var lname = el.layerSets[a].name;
         	if (lname.substr(-4) == ".png" || lname.substr(-4) == ".jpg" || lname.substr(-4) == ".jpeg") {
-				saveLayer(el.layers.getByName(lname), lname, oldPath, true, resize);
+				saveLayer(el.layers.getByName(lname), lname, oldPath, true, resize); //resized save
 				if (fullRes) saveLayer(el.layers.getByName(lname), lname, oldPath, true, false); //HD save
-				if (writeCSVs || writeXML) writeGraphicsLayer(el.layers.getByName(lname), lname);
+				if (writeCSVs || writeXML) writeGraphicsLayer(el.layers.getByName(lname), lname); //write CSV and XML data
         	} else {
             	// recursive
             	scanLayerSets(el.layerSets[a]);
@@ -76,9 +76,9 @@ function main(){
     	for(var j=0; j<el.artLayers.length; j++) {
     		var name = el.artLayers[j].name;
     		if (name.substr(-4) == ".png" || name.substr(-4) == ".jpg" || name.substr(-5) == ".jpeg") {
-				saveLayer(el.layers.getByName(name), name, oldPath, false, resize);
+				saveLayer(el.layers.getByName(name), name, oldPath, false, resize);  //resized save
 				if (fullRes) saveLayer(el.layers.getByName(name), name, oldPath, false, false); //HD save
-				if (writeCSVs || writeXML) writeGraphicsLayer(el.layers.getByName(name), name);
+				if (writeCSVs || writeXML) writeGraphicsLayer(el.layers.getByName(name), name); //write CSV and XML data
 			}
 		}
 	}

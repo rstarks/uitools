@@ -24,7 +24,7 @@ var doc = fl.getDocumentDOM();
 fl.outputPanel.clear();
 
 var fileName = doc.name;
-var filePath = doc.path;
+var filePath = platformPathToURI(doc.path); //var filePath = doc.path;
 filePath = filePath.substring(0, filePath.lastIndexOf(fileName));
 fl.trace("Flash file: " + filePath + fileName);
 
@@ -43,11 +43,11 @@ fl.trace("\n");
 fl.trace(" Text file: " + filePath + CSVTextFile);
 fl.trace("\n");
 
-var list = FLfile.read(unescape("file:///" + filePath + CSVfile));
+var list = FLfile.read(filePath + CSVfile); //var list = FLfile.read(unescape("file:///" + filePath + CSVfile));
 var parsed = list.splitCSV();
 var n = parsed.length - 1;
 
-var textList = FLfile.read(unescape("file:///" + filePath + CSVTextFile));
+var textList = FLfile.read(filePath + CSVTextFile); //var textList = FLfile.read(unescape("file:///" + filePath + CSVTextFile));
 textList = textList.replace(/[\n\r]/g, "");
 var textParsed = textList.splitCSV();
 var t = textParsed.length - 1;
@@ -56,7 +56,7 @@ var t = textParsed.length - 1;
 //The data is used to import and place each item on the stage with the corresponding image from the /<filename>_png/ folder that Photoshop created.
 while (n > 0) {
 	//importFileToStage("file:///" + filePath + fileName.substr(0, fileName.length - 4) + "_png/" + parsed[n-2] + ".png", parsed[n-2] + ".png", parsed[n-1], parsed[n]);
-	importFileToStage("file:///" + filePath + fileName.substr(0, fileName.length - 4) + "_png/" + parsed[n-2], parsed[n-2], parsed[n-1], parsed[n]);
+	importFileToStage(filePath + fileName.substr(0, fileName.length - 4) + "_png/" + parsed[n-2], parsed[n-2], parsed[n-1], parsed[n]);
 	//This line displays output from the import process so that you can check x/y coordinates with what appears on the stage.
 	fl.trace(parsed[n-2] + " placed at " + parsed[n-1] + "," + parsed[n]);
 	n = n - 3;
@@ -210,4 +210,72 @@ function createFlashAsset(item) {
 		lib.setItemProperty('linkageClassName', mcName);
 		lib.setItemProperty('scalingGrid',  false);
 	}
+}
+
+//Functions for universal URI/path handling
+/**
+ * Converts a filename in a platform-specific format to a file:/// URI.
+ * @param	path	A string, expressed in a platform-specific format, specifying the filename you want to convert.
+ * @return			A string expressed as a file:/// URI.
+**/
+function platformPathToURI(path) {
+	if (isCS4()) {
+		return FLfile.platformPathToURI(path);
+	} else {
+		if (isMac()) {
+			path = path.replace(/ /g, "%20");
+			path = "file:///" + path;
+		} else {
+			path = path.replace(/:\\/, "|/");
+			path = path.replace(/\\/, "/");
+			path = escape(path);
+			path = "file:///" + path;
+		}
+		return path;
+	}
+}
+
+/**
+ * Converts a filename expressed as a file:/// URI to a platform-specific format.
+ * @param	uri		A string, expressed as a file:/// URI, specifying the filename you want to convert.
+ * @return			A string representing a platform-specific path.
+**/
+function uriToPlatformPath(uri) {
+	if (isCS4()) {
+		return FLfile.uriToPlatformPath(uri);
+	} else {
+		if (isMac()) {
+			uri = uri.replace("file:///", "");
+			uri = uri.replace("%20", " ");
+		} else {
+			uri = unescape(uri);
+			uri = uri.replace(/file:\/\/\/([A-Z])|/, "$1:");
+			uri = uri.replace("file:///", "");
+			uri = uri.replace(/\//g, "\\");
+		}
+		return uri;
+	}
+}
+
+
+/**
+ * Determines if the script is running on a Mac or not.
+ * @return	A Boolean value of true if running on a Mac; false otherwise.
+**/
+function isMac() {
+	return (fl.version.search(/mac/i) > -1);
+}
+
+/**
+ * Determines if the script is running in Flash CS4 or higher, or not.
+ * @return	A Boolean value of true if running CS4 or higher; false if running CS3 or lower.
+**/
+function isCS4() {
+	var versionRE = /(\w+)\s+(\d+)(,\d+)+/;
+	var matches = versionRE.exec(fl.version);
+	var majorVersion = parseInt(matches[2]);
+	if (majorVersion >= 10) {
+		return true;
+	}
+	return false;
 }
