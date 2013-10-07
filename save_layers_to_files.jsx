@@ -98,6 +98,9 @@ function main(){
 		
 		//resizes the image based on the selected size percentage
 		if (shouldResize) {
+			newLayer = activeDocument.artLayers.add(); //fixes an issue with scaling layer effects
+    		activeDocument.mergeVisibleLayers();
+
 			modifier = sizes[selectedSize]/100;
 			
 			sizeX = activeDocument.width.value;
@@ -105,7 +108,8 @@ function main(){
 
 			resizeX = Math.floor(sizeX * modifier);
 			resizeY = Math.floor(sizeY * modifier);
-
+			
+			//activeDocument.mergeVisibleLayers(); //merge layers to preserve layers effects
 			activeDocument.resizeImage(resizeX, resizeY, null, ResampleMethod.BICUBIC);
 		}
 		

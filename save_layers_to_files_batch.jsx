@@ -14,7 +14,7 @@ function main(){
 	//preference variables
 	powerOfTwo = false;
 	resize = true;
-	trim = false;
+	trim = true;
 	writeCSVs = false;
 	writeXML = false;
 	writeTextStyles = false;
